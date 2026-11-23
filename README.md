@@ -1,4 +1,4 @@
-#**Prototipo didattico in versione Alpha**
+# **Prototipo didattico in versione Alpha**
 # Web App 3D e VR per l'Anatomia Umana (Z-Anatomy 9 Livelli)
 
 Applicazione interattiva per l'esplorazione, la dissezione virtuale e la manipolazione 3D del corpo umano in **3D e Realtà Virtuale (WebXR)**, basata sui modelli anatomici open-source di **Z-Anatomy (CC BY 4.0)**, integrata con l'**API REST pubblica di Wikipedia**, sviluppata interamente con **Three.js (tramite CDN con `importmap`)** e WebXR, **senza alcuna dipendenza Node.js**.
