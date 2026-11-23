@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Anatomia 3D & VR - Z-Anatomy 9 Livelli</title>
+  <link rel="stylesheet" href="./css/styles.css">
+
+  <!-- Three.js e Addon via CDN ufficiale tramite importmap moderno -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <!-- Contenitore Canvas WebGL / WebXR -->
+  <div id="canvas-container"></div>
+
+  <!-- Loading Overlay iniziale per tutti i 9 apparati anatomici con texture e materiali completi -->
+  <div class="initial-loader" id="initial-loader">
+    <div class="loader-spinner"></div>
+    <div class="loader-text" id="loader-title">Caricamento Z-Anatomy 3D...</div>
+    <div class="loader-subtext" id="loader-subtitle">Caricamento completo di texture, modelli e materiali...</div>
+    <div class="loader-progress-bar-container">
+      <div id="loader-progress-bar" class="loader-progress-bar"></div>
+    </div>
+  </div>
+
+  <!-- Header Superiore -->
+  <header class="header-bar">
+    <div class="logo-area">
+      <div class="logo-icon">🫀</div>
+      <div class="title-group">
+        <h1>ANATOMIA 3D & VR</h1>
+        <p>Laboratorio Z-Anatomy (CC BY 4.0)</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn-tutorial" id="btn-tutorial" title="Guida interattiva ai comandi per Mouse, Touch e Visore VR">
+        <span>📘</span> Tutorial Comandi
+      </button>
+      <div class="header-badges">
+        <div class="badge badge-pc">
+          <span class="badge-dot"></span>
+          <span>PC Mouse & Baricentro 3D</span>
+        </div>
+        <div class="badge badge-vr">
+          <span class="badge-dot"></span>
+          <span>WebXR VR Laser & Grip</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Pannello UI Flottante Sinistro: Controllo dei 9 Apparati con Lazy Loading e Controlli Step -->
+  <aside class="layers-panel" id="layers-panel">
+    <div class="layers-header">
+      <div class="layers-title">
+        <h2>Apparati Anatomici</h2>
+        <span>9 Livelli Interattivi</span>
+      </div>
+      <div class="quick-actions">
+        <button class="quick-btn" id="btn-quick-reset-pos" title="Ripristina posizioni originali (R)">Ripristina (R)</button>
+        <button class="quick-btn" id="btn-quick-all" title="Mostra tutti gli apparati">Tutti ON</button>
+        <button class="quick-btn" id="btn-quick-reset" title="Ripristina configurazione iniziale">Reset</button>
+      </div>
+    </div>
+
+    <!-- Lista dei 9 Apparati -->
+    <div class="layers-list" id="layers-list">
+      <!-- Generato dinamicamente da app.js -->
+    </div>
+
+    <!-- Sezione CREDITS Obbligatoria Z-Anatomy CC BY 4.0 -->
+    <div class="credits-box">
+      <span class="cc-badge">CC BY 4.0</span>
+      <div class="credits-text">
+        <strong>Modelli 3D: Z-Anatomy</strong><br>
+        <span>Open-source atlas con licenza Creative Commons Attribution 4.0 International.</span><br>
+        <a href="https://www.z-anatomy.net/" target="_blank" rel="noopener">www.z-anatomy.net</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Scheda Descrittiva Wikipedia Destra (HUD Informativo di Ispezione) -->
+  <aside class="medical-panel" id="medical-panel">
+    <div class="panel-header">
+      <div>
+        <span class="system-tag" id="panel-system">Z-ANATOMY</span>
+        <h2 class="organ-name" id="panel-name">Laboratorio Anatomico</h2>
+        <div class="latin-name" id="panel-wiki-desc">Clicca su una struttura per visualizzarne la voce Wikipedia in italiano</div>
+      </div>
+    </div>
+
+    <div class="wiki-summary-box">
+      <div class="wiki-badge">DESCRIZIONE ANATOMICA (WIKIPEDIA)</div>
+      <p class="description-text" id="panel-description">
+        Clicca o afferra qualsiasi osso, muscolo, viscere o vaso per isolarlo e visualizzare il testo riassuntivo aggiornato da Wikipedia in italiano.
+      </p>
+    </div>
+
+    <div class="panel-actions">
+      <button class="btn-tts" id="btn-tts" title="Ascolta spiegazione vocale">
+        <span>🔊</span> Ascolta Descrizione
+      </button>
+      <button class="btn-wiki" id="btn-open-wikipedia" style="display: none;" title="Apri voce completa su Wikipedia in una nuova scheda">
+        <span>🌐</span> Apri pagina Wikipedia
+      </button>
+    </div>
+  </aside>
+
+  <!-- Modal Tutorial Interattivo: Riconoscimento Automatico Dispositivo (Mouse, Touch, Visore VR) -->
+  <div class="tutorial-modal hidden" id="tutorial-modal">
+    <div class="tutorial-backdrop" id="tutorial-backdrop"></div>
+    <div class="tutorial-dialog">
+      <div class="tutorial-header">
+        <div class="tutorial-title-group">
+          <div class="tutorial-icon">📘</div>
+          <div>
+            <h2>GUIDA INTERATTIVA AI COMANDI</h2>
+            <p>Come muoversi e interagire con le parti anatomiche 3D & VR</p>
+          </div>
+        </div>
+        <button class="tutorial-close-btn" id="tutorial-close-btn" title="Chiudi tutorial">✕</button>
+      </div>
+
+      <!-- Selettore Tab Dispositivo (con badge automatico 'Rilevato') -->
+      <div class="tutorial-tabs">
+        <button class="tutorial-tab" data-target="mouse" id="tab-mouse">
+          <span>🖱️ Mouse & PC</span>
+          <span class="detected-badge" id="badge-detected-mouse">Rilevato</span>
+        </button>
+        <button class="tutorial-tab" data-target="touch" id="tab-touch">
+          <span>📱 Touchscreen</span>
+          <span class="detected-badge" id="badge-detected-touch">Rilevato</span>
+        </button>
+        <button class="tutorial-tab" data-target="vr" id="tab-vr">
+          <span>🥽 Visore VR</span>
+          <span class="detected-badge" id="badge-detected-vr">Rilevato</span>
+        </button>
+      </div>
+
+      <!-- Contenuti specifici per ciascun dispositivo -->
+      <div class="tutorial-body">
+        <!-- 1. MOUSE / DESKTOP -->
+        <div class="tutorial-pane" id="pane-mouse">
+          <div class="tutorial-grid">
+            <div class="tutorial-card">
+              <div class="card-icon">🔄</div>
+              <div class="card-content">
+                <h3>Ruota Telecamera</h3>
+                <p>Trascina con il <strong>Tasto Sinistro (LMB)</strong> sullo sfondo per orbitare a 360° attorno alla figura.</p>
+              </div>
+            </div>
+            <div class="tutorial-card">
+              <div class="card-icon">🔍</div>
+              <div class="card-content">
+                <h3>Zoom Telecamera</h3>
+                <p>Ruota la <strong>Rotellina del mouse</strong> sullo sfondo per ingrandire o allontanare la visuale.</p>
+              </div>
+            </div>
+            <div class="tutorial-card">
+              <div class="card-icon">✋</div>
+              <div class="card-content">
+                <h3>Sposta Visuale (Pan)</h3>
+                <p>Trascina con il <strong>Tasto Destro (RMB)</strong> sullo sfondo per traslare la visuale.</p>
+              </div>
+            </div>
+            <div class="tutorial-card highlight-card">
+              <div class="card-icon">🎯</div>
+              <div class="card-content">
+                <h3>Seleziona e Dati Wikipedia</h3>
+                <p>Fai <strong>Click Sinistro</strong> su qualsiasi osso o organo: si illumina delicatamente e apre il <strong>riassunto da Wikipedia</strong>.</p>
+              </div>
+            </div>
+            <div class="tutorial-card highlight-card">
+              <div class="card-icon">🔃</div>
+              <div class="card-content">
+                <h3>Ruota sul Baricentro</h3>
+                <p>Trascina con il <strong>Tasto Sinistro</strong> direttamente sopra il pezzo per ruotarlo attorno al proprio centro di massa geometrico.</p>
+              </div>
+            </div>
+            <div class="tutorial-card highlight-card">
+              <div class="card-icon">📐</div>
+              <div class="card-content">
+                <h3>Sposta il Pezzo nello Spazio</h3>
+                <p>Trascina con il <strong>Tasto Destro</strong> sopra il pezzo per staccarlo e traslarlo liberamente nello spazio.</p>
+              </div>
+            </div>
+            <div class="tutorial-card">
+              <div class="card-icon">🔎</div>
+              <div class="card-content">
+                <h3>Avvicina/Allontana Singolo Pezzo</h3>
+                <p>Ruota la <strong>Rotellina</strong> del mouse posizionandoti sopra il pezzo per avvicinarlo o allontanarlo da te.</p>
+              </div>
+            </div>
+            <div class="tutorial-card">
+              <div class="card-icon">⏮️</div>
+              <div class="card-content">
+                <h3>Ripristina Posizioni (Tasto R)</h3>
+                <p>Premi il tasto <strong>R</strong> da tastiera o il pulsante <strong>Ripristina (R)</strong> nel pannello sinistro per ricomporre il corpo.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. TOUCHSCREEN / SMARTPHONE & TABLET -->
+        <div class="tutorial-pane hidden" id="pane-touch">
+          <div class="tutorial-grid">
+            <div class="tutorial-card">
+              <div class="card-icon">👆</div>
+              <div class="card-content">
+                <h3>Ruota Telecamera</h3>
+                <p>Trascina con <strong>un dito</strong> sullo sfondo per orbitare fluidamente attorno al corpo umano.</p>
+              </div>
+            </div>
+            <div class="tutorial-card">
+              <div class="card-icon">🤏</div>
+              <div class="card-content">
+                <h3>Zoom Touch (Pinch)</h3>
+                <p>Pizzica lo schermo (<strong>Pinch-to-zoom</strong> con due dita) per ingrandire o allontanare la prospettiva.</p>
+              </div>
+            </div>
+            <div class="tutorial-card">
+              <div class="card-icon">✌️</div>
+              <div class="card-content">
+                <h3>Sposta Visuale (Pan)</h3>
+                <p>Trascina con <strong>due dita</strong> contemporaneamente per traslare la visuale nello spazio.</p>
+              </div>
+            </div>
+            <div class="tutorial-card highlight-card">
+              <div class="card-icon">🎯</div>
+              <div class="card-content">
+                <h3>Tocca per Ispezionare</h3>
+                <p>Tocca un osso, muscolo o organo: si illumina e carica la scheda clinica da <strong>Wikipedia in italiano</strong>.</p>
+              </div>
+            </div>
+            <div class="tutorial-card highlight-card">
+              <div class="card-icon">🔃</div>
+              <div class="card-content">
+                <h3>Ruota Pezzo sul Baricentro</h3>
+                <p>Tocca e trascina direttamente sopra la parte selezionata per ruotarla ed esaminarla sul proprio baricentro.</p>
+              </div>
+            </div>
+            <div class="tutorial-card">
+              <div class="card-icon">🎛️</div>
+              <div class="card-content">
+                <h3>Regola i 9 Apparati</h3>
+                <p>Usa il pannello sinistro per attivare/disattivare gli apparati e regolare la trasparenza con i selettori <strong>+</strong> e <strong>−</strong>.</p>
+              </div>
+            </div>
+            <div class="tutorial-card">
+              <div class="card-icon">⏮️</div>
+              <div class="card-content">
+                <h3>Ripristina Posizioni</h3>
+                <p>Tocca il pulsante <strong>Ripristina (R)</strong> in alto a sinistra per ricollocare tutti i pezzi alla posizione originale.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. VISORE VR / WEBXR -->
+        <div class="tutorial-pane hidden" id="pane-vr">
+          <div class="tutorial-grid">
+            <div class="tutorial-card">
+              <div class="card-icon">🔦</div>
+              <div class="card-content">
+                <h3>Puntamento Laser</h3>
+                <p>Muovi i controller VR: il raggio laser ciano intercetta gli apparati anatomici e i pannelli 3D fluttuanti.</p>
+              </div>
+            </div>
+            <div class="tutorial-card highlight-card">
+              <div class="card-icon">✊</div>
+              <div class="card-content">
+                <h3>Afferra e Sposta (Grab)</h3>
+                <p>Punta una parte e tieni premuto il <strong>Trigger (grilletto)</strong> o il <strong>Grip (impugnatura)</strong> per staccarla e muoverla nello spazio con la mano.</p>
+              </div>
+            </div>
+            <div class="tutorial-card highlight-card">
+              <div class="card-icon">💫</div>
+              <div class="card-content">
+                <h3>Ruota sul Baricentro</h3>
+                <p>Mentre tieni afferrata una parte, <strong>ruota il polso</strong>: il pezzo ruota sul suo baricentro naturale.</p>
+              </div>
+            </div>
+            <div class="tutorial-card highlight-card">
+              <div class="card-icon">🕹️</div>
+              <div class="card-content">
+                <h3>Distanza con Thumbstick</h3>
+                <p>Muovi la <strong>levetta analogica (Thumbstick)</strong> avanti o indietro per avvicinare o allontanare il pezzo lungo il laser.</p>
+              </div>
+            </div>
+            <div class="tutorial-card">
+              <div class="card-icon">🔴</div>
+              <div class="card-content">
+                <h3>Ripristina Posizioni (Tasti B / Y)</h3>
+                <p>Premi il pulsante <strong>B</strong> (controller destro) o <strong>Y</strong> (controller sinistro) per far tornare istantaneamente tutti i pezzi al loro posto.</p>
+              </div>
+            </div>
+            <div class="tutorial-card">
+              <div class="card-icon">🎚️</div>
+              <div class="card-content">
+                <h3>Schermo Livelli (a Sinistra)</h3>
+                <p>Punta il laser sui pulsanti dello schermo alla tua sinistra per attivare i 9 apparati e regolarne l'opacità con <strong>+</strong> e <strong>−</strong>.</p>
+              </div>
+            </div>
+            <div class="tutorial-card">
+              <div class="card-icon">📖</div>
+              <div class="card-content">
+                <h3>Scheda Clinica (a Destra)</h3>
+                <p>Consulta lo schermo 3D alla tua destra per leggere le informazioni anatomiche aggiornate da Wikipedia in italiano.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tutorial-footer">
+        <button class="tutorial-ok-btn" id="tutorial-ok-btn">Ho capito, inizia a esplorare</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entry Point Javascript ES Module -->
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
